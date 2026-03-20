@@ -22,7 +22,7 @@ async def start_web_server():
     await site.start()
 
 
-# --- Словарь настроек языков ---
+# --- Языки ---
 LANG_MENU = {
     "RU": {"name": "Русский", "code": "ru"},
     "EN": {"name": "English", "code": "en"},
@@ -30,7 +30,6 @@ LANG_MENU = {
     "FR": {"name": "Français", "code": "fr"},
     "ES": {"name": "Español", "code": "es"},
 }
-
 ALL_LANGS = LANG_MENU.copy()
 ALL_LANGS["ZH"] = {"name": "Chinese", "code": "zh-CN"}
 
@@ -45,6 +44,10 @@ class TranslatorBot(discord.Client):
         self.loop.create_task(start_web_server())
         for lang_id in LANG_MENU.keys():
             self.create_context_menu(lang_id)
+
+        # Регистрация слэш-команды /tr с поддержкой ЛС
+        self.tree.add_command(translate_cmd)
+
         await self.tree.sync()
         print("Команды синхронизированы!")
 
@@ -71,11 +74,12 @@ class TranslatorBot(discord.Client):
             name=f"Translate to {lang_id}", callback=context_menu_callback
         )
 
-        # ВЕЗДЕ ИСПОЛЬЗУЕМ МНОЖЕСТВЕННОЕ ЧИСЛО (s в конце)
-        menu.allowed_contexts = discord.AppCommandContext(
+        # ПРЯМАЯ НАСТРОЙКА (самый надежный способ)
+        # 0 = сервера, 1 = ЛС с ботом, 2 = групповые ЛС
+        menu.contexts = discord.AppCommandContext(
             guilds=True, dm_channels=True, private_channels=True
         )
-        menu.allowed_installs = discord.AppInstallationType(guilds=True, user=True)
+        menu.integration_types = discord.AppInstallationType(guilds=True, user=True)
 
         self.tree.add_command(menu)
 
@@ -86,11 +90,9 @@ class TranslatorBot(discord.Client):
 client = TranslatorBot()
 
 
-@client.tree.command(name="tr", description="Перевести текст")
+# Выносим команду отдельно, чтобы настроить её вручную
+@app_commands.command(name="tr", description="Перевести текст")
 @app_commands.describe(text="Текст", language="Язык")
-# ИСПРАВЛЕНО: dm_channels (с буквой s)
-@app_commands.allowed_contexts(guilds=True, dm_channels=True, private_channels=True)
-@app_commands.allowed_installs(guilds=True, user=True)
 @app_commands.choices(
     language=[
         app_commands.Choice(name="Русский", value="RU"),
@@ -112,5 +114,11 @@ async def translate_cmd(
     except Exception as e:
         await interaction.followup.send(f"Ошибка: {e}")
 
+
+# Настройка контекстов для /tr
+translate_cmd.contexts = discord.AppCommandContext(
+    guilds=True, dm_channels=True, private_channels=True
+)
+translate_cmd.integration_types = discord.AppInstallationType(guilds=True, user=True)
 
 client.run(os.getenv("BOT_TOKEN"))
