@@ -71,9 +71,9 @@ class TranslatorBot(discord.Client):
             name=f"Translate to {lang_id}", callback=context_menu_callback
         )
 
-        # ИСПРАВЛЕНО: добавлена 's' в guilds
+        # ВЕЗДЕ ИСПОЛЬЗУЕМ МНОЖЕСТВЕННОЕ ЧИСЛО (s в конце)
         menu.allowed_contexts = discord.AppCommandContext(
-            guilds=True, dm_channel=True, private_channels=True
+            guilds=True, dm_channels=True, private_channels=True
         )
         menu.allowed_installs = discord.AppInstallationType(guilds=True, user=True)
 
@@ -88,8 +88,8 @@ client = TranslatorBot()
 
 @client.tree.command(name="tr", description="Перевести текст")
 @app_commands.describe(text="Текст", language="Язык")
-# ИСПРАВЛЕНО: добавлена 's' в guilds и private_channels
-@app_commands.allowed_contexts(guilds=True, dm_channel=True, private_channels=True)
+# ИСПРАВЛЕНО: dm_channels (с буквой s)
+@app_commands.allowed_contexts(guilds=True, dm_channels=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, user=True)
 @app_commands.choices(
     language=[
