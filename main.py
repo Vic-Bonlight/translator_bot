@@ -39,55 +39,52 @@ class TranslatorBot(discord.Client):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
 
-    # Универсальная функция перевода для контекстного меню
-    async def universal_context_translate(
-        self,
-        interaction: discord.Interaction,
-        message: discord.Message,
-        target_lang: str,
-    ):
-        await interaction.response.defer(ephemeral=True)
-        try:
-            if not message.content:
-                await interaction.followup.send("Нет текста для перевода!")
-                return
-
-            translated = GoogleTranslator(
-                source="auto", target=LANGS[target_lang]["code"]
-            ).translate(message.content)
-            lang_name = LANGS[target_lang]["name"]
-            await interaction.followup.send(
-                f"**Перевод на {lang_name}:**\n{translated}"
-            )
-        except Exception as e:
-            await interaction.followup.send(f"Ошибка: {e}")
-
     async def setup_hook(self):
-        # Запускаем сервер для Koyeb
         self.loop.create_task(start_web_server())
 
-        # Создаем контекстные меню для каждого языка из списка
-        for lang_id, info in LANGS.items():
-            # Используем default value в lambda, чтобы зафиксировать lang_id
-            ctx_menu = app_commands.ContextMenu(
-                name=f"Translate to {lang_id}",
-                callback=lambda i, m, l=lang_id: self.universal_context_translate(
-                    i, m, l
-                ),
-            )
-            self.tree.add_command(ctx_menu)
+        # Создаем контекстные меню через "фабрику"
+        for lang_id in LANGS.keys():
+            self.create_context_menu(lang_id)
 
         await self.tree.sync()
         print("Команды синхронизированы!")
 
+    def create_context_menu(self, lang_id):
+        # Эта внутренняя функция — именно то, что требует Discord:
+        # параметры interaction и message с четко указанными типами данных
+        async def context_menu_callback(
+            interaction: discord.Interaction, message: discord.Message
+        ):
+            await interaction.response.defer(ephemeral=True)
+            try:
+                if not message.content:
+                    await interaction.followup.send("Текст не найден!")
+                    return
+
+                target_code = LANGS[lang_id]["code"]
+                translated = GoogleTranslator(
+                    source="auto", target=target_code
+                ).translate(message.content)
+                lang_name = LANGS[lang_id]["name"]
+                await interaction.followup.send(
+                    f"**Перевод на {lang_name}:**\n{translated}"
+                )
+            except Exception as e:
+                await interaction.followup.send(f"Ошибка: {e}")
+
+        # Создаем команду меню
+        menu = app_commands.ContextMenu(
+            name=f"Translate to {lang_id}", callback=context_menu_callback
+        )
+        self.tree.add_command(menu)
+
     async def on_ready(self):
-        print(f"Бот {self.user} готов к работе на 6 языках!")
+        print(f"Бот {self.user} готов к работе!")
 
 
 client = TranslatorBot()
 
 
-# Слэш-команда /tr с выбором языка
 @client.tree.command(name="tr", description="Перевести текст на выбранный язык")
 @app_commands.describe(text="Текст для перевода", language="Выберите язык")
 @app_commands.choices(
