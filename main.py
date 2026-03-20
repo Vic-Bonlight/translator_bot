@@ -23,7 +23,6 @@ async def start_web_server():
 
 
 # --- Словарь настроек языков ---
-# ВАЖНО: В LANG_MENU только 5 языков (лимит Discord)
 LANG_MENU = {
     "RU": {"name": "Русский", "code": "ru"},
     "EN": {"name": "English", "code": "en"},
@@ -32,7 +31,6 @@ LANG_MENU = {
     "ES": {"name": "Español", "code": "es"},
 }
 
-# Все языки для команды /tr
 ALL_LANGS = LANG_MENU.copy()
 ALL_LANGS["ZH"] = {"name": "Chinese", "code": "zh-CN"}
 
@@ -45,11 +43,8 @@ class TranslatorBot(discord.Client):
 
     async def setup_hook(self):
         self.loop.create_task(start_web_server())
-
-        # Создаем контекстные меню (ровно 5 штук)
         for lang_id in LANG_MENU.keys():
             self.create_context_menu(lang_id)
-
         await self.tree.sync()
         print("Команды синхронизированы!")
 
@@ -62,14 +57,12 @@ class TranslatorBot(discord.Client):
                 if not message.content:
                     await interaction.followup.send("Текст не найден!")
                     return
-
                 target_code = LANG_MENU[lang_id]["code"]
                 translated = GoogleTranslator(
                     source="auto", target=target_code
                 ).translate(message.content)
-                lang_name = LANG_MENU[lang_id]["name"]
                 await interaction.followup.send(
-                    f"**Перевод на {lang_name}:**\n{translated}"
+                    f"**Перевод на {LANG_MENU[lang_id]['name']}:**\n{translated}"
                 )
             except Exception as e:
                 await interaction.followup.send(f"Ошибка: {e}")
@@ -77,14 +70,13 @@ class TranslatorBot(discord.Client):
         menu = app_commands.ContextMenu(
             name=f"Translate to {lang_id}", callback=context_menu_callback
         )
-        # --- ДОБАВЬТЕ ЭТИ СТРОКИ НИЖЕ ---
-        # Разрешаем использовать в личке и на серверах
+
+        # ИСПРАВЛЕНО: добавлена 's' в guilds
         menu.allowed_contexts = discord.AppCommandContext(
-            guild=True, dm_channel=True, private_channel=True
+            guilds=True, dm_channel=True, private_channels=True
         )
-        # Разрешаем установку и на сервер, и пользователю в профиль
-        menu.allowed_installs = discord.AppInstallationType(guild=True, user=True)
-        # -------------------------------
+        menu.allowed_installs = discord.AppInstallationType(guilds=True, user=True)
+
         self.tree.add_command(menu)
 
     async def on_ready(self):
@@ -96,9 +88,9 @@ client = TranslatorBot()
 
 @client.tree.command(name="tr", description="Перевести текст")
 @app_commands.describe(text="Текст", language="Язык")
-# Добавляем контексты здесь тоже:
-@app_commands.allowed_contexts(guild=True, dm_channel=True, private_channel=True)
-@app_commands.allowed_installs(guild=True, user=True)
+# ИСПРАВЛЕНО: добавлена 's' в guilds и private_channels
+@app_commands.allowed_contexts(guilds=True, dm_channel=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, user=True)
 @app_commands.choices(
     language=[
         app_commands.Choice(name="Русский", value="RU"),
