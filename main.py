@@ -1,5 +1,6 @@
 import os
 import discord
+import asyncio  # ДОБАВЛЕНО
 from aiohttp import web  # ДОБАВЛЕНО: нужно для работы сервера
 from discord import app_commands
 from deep_translator import GoogleTranslator
