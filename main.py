@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# --- Веб-сервер для Koyeb Health Check ---
+# --- Веб-сервер для Koyeb ---
 async def handle(request):
     return web.Response(text="Bot is alive")
 
@@ -23,14 +23,18 @@ async def start_web_server():
 
 
 # --- Словарь настроек языков ---
-LANGS = {
+# ВАЖНО: В LANG_MENU только 5 языков (лимит Discord)
+LANG_MENU = {
     "RU": {"name": "Русский", "code": "ru"},
     "EN": {"name": "English", "code": "en"},
     "DE": {"name": "Deutsch", "code": "de"},
     "FR": {"name": "Français", "code": "fr"},
     "ES": {"name": "Español", "code": "es"},
-    "ZH": {"name": "Chinese", "code": "zh-CN"},
 }
+
+# Все языки для команды /tr
+ALL_LANGS = LANG_MENU.copy()
+ALL_LANGS["ZH"] = {"name": "Chinese", "code": "zh-CN"}
 
 
 class TranslatorBot(discord.Client):
@@ -42,16 +46,14 @@ class TranslatorBot(discord.Client):
     async def setup_hook(self):
         self.loop.create_task(start_web_server())
 
-        # Создаем контекстные меню через "фабрику"
-        for lang_id in LANGS.keys():
+        # Создаем контекстные меню (ровно 5 штук)
+        for lang_id in LANG_MENU.keys():
             self.create_context_menu(lang_id)
 
         await self.tree.sync()
         print("Команды синхронизированы!")
 
     def create_context_menu(self, lang_id):
-        # Эта внутренняя функция — именно то, что требует Discord:
-        # параметры interaction и message с четко указанными типами данных
         async def context_menu_callback(
             interaction: discord.Interaction, message: discord.Message
         ):
@@ -61,32 +63,31 @@ class TranslatorBot(discord.Client):
                     await interaction.followup.send("Текст не найден!")
                     return
 
-                target_code = LANGS[lang_id]["code"]
+                target_code = LANG_MENU[lang_id]["code"]
                 translated = GoogleTranslator(
                     source="auto", target=target_code
                 ).translate(message.content)
-                lang_name = LANGS[lang_id]["name"]
+                lang_name = LANG_MENU[lang_id]["name"]
                 await interaction.followup.send(
                     f"**Перевод на {lang_name}:**\n{translated}"
                 )
             except Exception as e:
                 await interaction.followup.send(f"Ошибка: {e}")
 
-        # Создаем команду меню
         menu = app_commands.ContextMenu(
             name=f"Translate to {lang_id}", callback=context_menu_callback
         )
         self.tree.add_command(menu)
 
     async def on_ready(self):
-        print(f"Бот {self.user} готов к работе!")
+        print(f"Бот {self.user} готов!")
 
 
 client = TranslatorBot()
 
 
-@client.tree.command(name="tr", description="Перевести текст на выбранный язык")
-@app_commands.describe(text="Текст для перевода", language="Выберите язык")
+@client.tree.command(name="tr", description="Перевести текст")
+@app_commands.describe(text="Текст", language="Язык")
 @app_commands.choices(
     language=[
         app_commands.Choice(name="Русский", value="RU"),
@@ -102,7 +103,7 @@ async def translate_cmd(
 ):
     await interaction.response.defer(ephemeral=True)
     try:
-        target_code = LANGS[language.value]["code"]
+        target_code = ALL_LANGS[language.value]["code"]
         translated = GoogleTranslator(source="auto", target=target_code).translate(text)
         await interaction.followup.send(f"**Перевод ({language.name}):**\n{translated}")
     except Exception as e:
