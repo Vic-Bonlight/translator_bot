@@ -77,6 +77,14 @@ class TranslatorBot(discord.Client):
         menu = app_commands.ContextMenu(
             name=f"Translate to {lang_id}", callback=context_menu_callback
         )
+        # --- ДОБАВЬТЕ ЭТИ СТРОКИ НИЖЕ ---
+        # Разрешаем использовать в личке и на серверах
+        menu.allowed_contexts = discord.AppCommandContext(
+            guild=True, dm_channel=True, private_channel=True
+        )
+        # Разрешаем установку и на сервер, и пользователю в профиль
+        menu.allowed_installs = discord.AppInstallationType(guild=True, user=True)
+        # -------------------------------
         self.tree.add_command(menu)
 
     async def on_ready(self):
@@ -88,6 +96,9 @@ client = TranslatorBot()
 
 @client.tree.command(name="tr", description="Перевести текст")
 @app_commands.describe(text="Текст", language="Язык")
+# Добавляем контексты здесь тоже:
+@app_commands.allowed_contexts(guild=True, dm_channel=True, private_channel=True)
+@app_commands.allowed_installs(guild=True, user=True)
 @app_commands.choices(
     language=[
         app_commands.Choice(name="Русский", value="RU"),
