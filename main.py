@@ -22,7 +22,7 @@ async def start_web_server():
     await site.start()
 
 
-# --- Языки ---
+# --- Настройки языков ---
 LANG_MENU = {
     "RU": {"name": "Русский", "code": "ru"},
     "EN": {"name": "English", "code": "en"},
@@ -45,7 +45,7 @@ class TranslatorBot(discord.Client):
         for lang_id in LANG_MENU.keys():
             self.create_context_menu(lang_id)
 
-        # Регистрация слэш-команды /tr с поддержкой ЛС
+        # Добавляем слэш-команду /tr
         self.tree.add_command(translate_cmd)
 
         await self.tree.sync()
@@ -74,12 +74,11 @@ class TranslatorBot(discord.Client):
             name=f"Translate to {lang_id}", callback=context_menu_callback
         )
 
-        # ПРЯМАЯ НАСТРОЙКА (самый надежный способ)
-        # 0 = сервера, 1 = ЛС с ботом, 2 = групповые ЛС
-        menu.contexts = discord.AppCommandContext(
-            guilds=True, dm_channels=True, private_channels=True
-        )
-        menu.integration_types = discord.AppInstallationType(guilds=True, user=True)
+        # Используем числовые значения (битовые маски)
+        # 0=Серверы, 1=ЛС с ботом, 2=Групповые ЛС. Итого: 0,1,2
+        menu._contexts = [0, 1, 2]
+        # 0=Установка на сервер, 1=Установка пользователю. Итого: 0,1
+        menu._integration_types = [0, 1]
 
         self.tree.add_command(menu)
 
@@ -90,7 +89,6 @@ class TranslatorBot(discord.Client):
 client = TranslatorBot()
 
 
-# Выносим команду отдельно, чтобы настроить её вручную
 @app_commands.command(name="tr", description="Перевести текст")
 @app_commands.describe(text="Текст", language="Язык")
 @app_commands.choices(
@@ -115,10 +113,8 @@ async def translate_cmd(
         await interaction.followup.send(f"Ошибка: {e}")
 
 
-# Настройка контекстов для /tr
-translate_cmd.contexts = discord.AppCommandContext(
-    guilds=True, dm_channels=True, private_channels=True
-)
-translate_cmd.integration_types = discord.AppInstallationType(guilds=True, user=True)
+# Настройка контекстов через списки (обход ошибок библиотеки)
+translate_cmd._contexts = [0, 1, 2]
+translate_cmd._integration_types = [0, 1]
 
 client.run(os.getenv("BOT_TOKEN"))
